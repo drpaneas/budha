@@ -38,6 +38,29 @@ func getTitleHTML(data string) (pageTitle string) {
 	return pageTitle
 }
 
+func getLinks(website string, anchor string) (string, error) {
+
+	// Create a goquery document from the HTTP response
+	doc, err := goquery.NewDocument(website)
+	if err != nil {
+		log.Fatal("Error loading HTTP response body. ", err)
+		os.Exit(1)
+	}
+
+	fmt.Println(doc)
+
+	// Find all links and process them
+	doc.Find("a[href]").Each(func(index int, item *goquery.Selection) {
+		href, _ := item.Attr("href")
+		// fmt.Printf("link: %s - anchor text: %s\n", href, item.Text())
+		if strings.Contains(string(item.Text()), anchor) {
+			fmt.Printf("link: %s - anchor text: %s\n", href, item.Text())
+			return href
+		}
+	})
+	return "", nil
+}
+
 func main() {
 	// Call http.Get with the URL we want to retrieve
 	res, err := http.Get("https://blu-ray-rezensionen.net/ultra-hd-blu-ray/")
@@ -60,22 +83,5 @@ func main() {
 
 	// Print out the result
 	fmt.Println(getTitleHTML(dataInFormattedString))
-
-	// Create a goquery document from the HTTP response
-	doc, err := goquery.NewDocument("https://blu-ray-rezensionen.net/ultra-hd-blu-ray/")
-	if err != nil {
-		log.Fatal("Error loading HTTP response body. ", err)
-	}
-
-	fmt.Println(doc)
-
-	// Find all links and process them
-	doc.Find("a[href]").Each(func(index int, item *goquery.Selection) {
-		href, _ := item.Attr("href")
-		// fmt.Printf("link: %s - anchor text: %s\n", href, item.Text())
-		if strings.Contains(string(item.Text()), "UHD") {
-			fmt.Printf("link: %s - anchor text: %s\n", href, item.Text())
-		}
-	})
 
 }
