@@ -1,0 +1,231 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"log"
+	"net/http"
+	"strings"
+
+	"github.com/PuerkitoBio/goquery"
+)
+
+func MoviesTitleScrape(website string) {
+	// Request the HTML page.
+	res, err := http.Get(website)
+	if err != nil {
+		log.Fatalf("[error] [http.Get()]: %s", err)
+	}
+	defer res.Body.Close()
+	if res.StatusCode != 200 {
+		log.Fatalf("[error] [res.StatusCode] code:%d status:%s", res.StatusCode, res.Status)
+	}
+
+	// Load the HTML document
+	doc, err := goquery.NewDocumentFromReader(res.Body)
+	if err != nil {
+		log.Fatal("Cannot load the HTML document: %s", err)
+	}
+
+	// Find UHD links and titles
+	doc.Find("a[href]").EachWithBreak(func(i int, s *goquery.Selection) bool {
+		href, _ := s.Attr("href")
+		if strings.Contains(string(s.Text()), "UHD") {
+			movieTitle := s.Text()
+			movieLink := href
+			movieReal4K := "undefined"
+			movieDirector := "undefined"
+			movieStudio := "undefined"
+			movieAudioFormat := "undefined"
+			movieCodec := "undefined"
+			movieHDR := "undefined"
+			movieLength := "undefined"
+			movieRatio := "undefined"
+			movieCountry := "undefined"
+			movieYear := "undefined"
+			movieActors := "undefined"
+			moviePQ := "undefined"
+
+			// Exclude Lichtmond – The Journey 3D 4K UHD as parsing it is nightmare
+			// this works only with EachWithBreak() bool
+			if strings.Contains(movieTitle, "Lichtmond") {
+				return false
+			}
+
+			// Request the HTML page.
+			res, err := http.Get(movieLink)
+			if err != nil {
+				log.Fatalf("[error] [http.Get()]: %s", err)
+			}
+			defer res.Body.Close()
+			if res.StatusCode != 200 {
+				log.Fatalf("[error] [res.StatusCode] code:%d status:%s", res.StatusCode, res.Status)
+			}
+			// Load the HTML document
+			doc, err := goquery.NewDocumentFromReader(res.Body)
+			if err != nil {
+				log.Fatal("Cannot load the HTML document: %s", err)
+			}
+			// Find UHD links and titles
+			doc.Find("p").Each(func(i int, s *goquery.Selection) {
+				// Find PQ
+				if strings.Contains(s.Text(), "Bildqualität UHD") {
+					htmlstr, err := s.Html()
+					if err != nil {
+						log.Fatal("Cannot parse the HTML: %s", err)
+					}
+					// Replace the HTML breaks with newline escape characters, creating a multiline string
+					str := strings.Replace(htmlstr, "<br/>", "\n", -1)
+					scanner := bufio.NewScanner(strings.NewReader(str))
+					for scanner.Scan() {
+						// Apply filtering for the values I am interesting in
+						if strings.Contains(scanner.Text(), "Bildqualität UHD") {
+							parts := strings.Split(scanner.Text(), ":")
+							trimmedPart := strings.TrimSpace(parts[1])
+							parts2 := strings.Split(trimmedPart, "%")
+							moviePQ = parts2[0]
+						}
+					}
+				}
+				fmt.Println(movieTitle, moviePQ)
+				if strings.Contains(string(s.Text()), "Real 4K:") {
+					htmlstr, err := s.Html()
+					if err != nil {
+						log.Fatal("Cannot parse the HTML: %s", err)
+					}
+					// Replace the HTML breaks with newline escape characters, creating a multiline string
+					str := strings.Replace(htmlstr, "<br/>", "\n", -1)
+					//fmt.Println(str)
+					// Iterate over this multiline string
+					scanner := bufio.NewScanner(strings.NewReader(str))
+					for scanner.Scan() {
+						// Apply filtering for the values I am interesting in
+						if strings.Contains(scanner.Text(), "Real 4K") {
+							parts := strings.Split(scanner.Text(), ":")
+							movieReal4K = parts[1]
+						}
+						if strings.Contains(scanner.Text(), "Regie") {
+							parts := strings.Split(scanner.Text(), ":")
+							movieDirector = parts[1]
+						}
+						if strings.Contains(scanner.Text(), "Anbieter") {
+							parts := strings.Split(scanner.Text(), ":")
+							movieStudio = parts[1]
+						}
+						if strings.Contains(scanner.Text(), "Tonformate UHD") {
+							parts := strings.Split(scanner.Text(), ":")
+							movieAudioFormat = parts[1]
+						} else if strings.Contains(scanner.Text(), "Tonformate BD/UHD") {
+							parts := strings.Split(scanner.Text(), ":")
+							movieAudioFormat = parts[1]
+						} else if strings.Contains(scanner.Text(), "Tonformate Blu-ray/UHD") {
+							parts := strings.Split(scanner.Text(), ":")
+							movieAudioFormat = parts[1]
+						} else if strings.Contains(scanner.Text(), "Tonformate (UHD)") {
+							parts := strings.Split(scanner.Text(), ":")
+							movieAudioFormat = parts[1]
+						} else if strings.Contains(scanner.Text(), "UHD-Fassung") {
+							parts := strings.Split(scanner.Text(), ":")
+							movieAudioFormat = parts[1]
+						} else {
+							if strings.Contains(scanner.Text(), "Tonformate:") {
+								parts := strings.Split(scanner.Text(), ":")
+								movieAudioFormat = parts[1]
+							} else if strings.Contains(scanner.Text(), "Tonformate BD:") {
+								parts := strings.Split(scanner.Text(), ":")
+								movieAudioFormat = parts[1]
+							} else if strings.Contains(scanner.Text(), "Tonformate dts-HD-Master 5.1:") {
+								parts := strings.Split(scanner.Text(), ":")
+								movieAudioFormat = parts[1]
+							}
+						}
+						if strings.Contains(scanner.Text(), "Codec UHD") {
+							parts := strings.Split(scanner.Text(), ":")
+							movieCodec = parts[1]
+						} else if strings.Contains(scanner.Text(), "Code UHD") {
+							parts := strings.Split(scanner.Text(), ":")
+							movieCodec = parts[1]
+						} else if strings.Contains(scanner.Text(), "Codec: HEVC") {
+							movieCodec = "HEVC"
+						} else if strings.Contains(scanner.Text(), "Codec (UHD)") {
+							parts := strings.Split(scanner.Text(), ":")
+							movieCodec = parts[1]
+						}
+						if strings.Contains(scanner.Text(), "High Dynamic Range") {
+							parts := strings.Split(scanner.Text(), ":")
+							movieHDR = parts[1]
+						}
+						if strings.Contains(scanner.Text(), "Laufzeit") {
+							parts := strings.Split(scanner.Text(), ":")
+							// There is whitespace (e.g. " 133") and this fails upon conversion
+							movieLength = parts[1]
+						}
+						if strings.Contains(scanner.Text(), "Bildformat") {
+							parts := strings.Split(scanner.Text(), ":")
+							movieRatio = parts[1]
+						}
+						if strings.Contains(scanner.Text(), "Land") {
+							parts := strings.Split(scanner.Text(), ":")       // e.g. Land/Jahr: USA 2017
+							trimmedPart := strings.TrimSpace(parts[1])        // e.g. "USA 2017"
+							movieCountry = strings.Split(trimmedPart, " ")[0] //e.g. USA
+							movieYear = strings.Split(trimmedPart, " ")[1]    // e.g. 2019
+
+						}
+						if strings.Contains(scanner.Text(), "Darsteller") {
+							parts := strings.Split(scanner.Text(), ":")
+							movieActors = parts[1]
+						} else if strings.Contains(scanner.Text(), "Sprecher") {
+							parts := strings.Split(scanner.Text(), ":")
+							movieActors = parts[1]
+						}
+					}
+					if err := scanner.Err(); err != nil {
+						log.Fatal(err)
+					}
+				}
+			})
+
+			Collection = append(Collection, Movie{
+				title:       movieTitle,
+				link:        movieLink,
+				real4K:      movieReal4K,
+				director:    movieDirector,
+				studio:      movieStudio,
+				audioFormat: movieAudioFormat,
+				codec:       movieCodec,
+				hdr:         movieHDR,
+				length:      movieLength,
+				ratio:       movieRatio,
+				country:     movieCountry,
+				year:        movieYear,
+				actors:      movieActors,
+				pq:          moviePQ,
+			})
+		}
+		return true
+	})
+}
+
+func main() {
+	MoviesTitleScrape("https://blu-ray-rezensionen.net/ultra-hd-blu-ray/")
+
+	for _, Collection := range Collection {
+		//GetMetadata(Collection.link)
+		fmt.Println("Movie:", Collection.title)
+		fmt.Println("PQ:", Collection.pq)
+		fmt.Println("Real 4K:", Collection.real4K)
+		fmt.Println("HDR:", Collection.hdr)
+		fmt.Println("Audio:", Collection.audioFormat)
+		fmt.Println("Video Codec:", Collection.codec)
+		fmt.Println("Aspect Ratio:", Collection.ratio)
+		fmt.Println("Duration:", Collection.length)
+		fmt.Println("Year:", Collection.year)
+		fmt.Println("Director:", Collection.director)
+		fmt.Println("Actors:", Collection.actors)
+		fmt.Println("Production:", Collection.studio)
+		fmt.Println("Country:", Collection.country)
+		fmt.Println("Link:", Collection.link)
+		fmt.Printf("\n\n\n")
+	}
+
+}
