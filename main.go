@@ -29,6 +29,10 @@ type Movie struct {
 	pq          string // 85%
 }
 
+var phrase string
+var phraseList []string
+var err error
+
 // Initialize slice
 
 func getHTMLDocument(url string) *goquery.Document {
@@ -60,6 +64,7 @@ func printMovieSlice(mySlice []Movie) {
 	for index, element := range mySlice {
 		fmt.Printf("%4d : %v\n", index, element)
 	}
+	fmt.Printf("\n\n\n")
 }
 
 func getLinksWithPhrase(htmlDocument *goquery.Document, phrase string) []string {
@@ -106,7 +111,7 @@ func getTagWithPhrase(tags []string, phrase string) (string, error) {
 			return strings.TrimSpace(strings.Split(tags[index], ":")[1]), nil
 		}
 	}
-	err := errors.New("Tag not found")
+	err := errors.New("not found")
 	return "?", err
 }
 
@@ -125,7 +130,7 @@ func getScreen(tags []string, phrase string) (string, error) {
 			return screen, nil
 		}
 	}
-	err := errors.New("Tag not found")
+	err := errors.New("not found")
 	return "?", err
 }
 
@@ -138,7 +143,7 @@ func getCountry(tags []string, phrase string) (string, error) {
 			return country, nil
 		}
 	}
-	err := errors.New("Tag not found")
+	err := errors.New("not found")
 	return "?", err
 }
 
@@ -151,7 +156,7 @@ func getYear(tags []string, phrase string) (string, error) {
 			return year, nil
 		}
 	}
-	err := errors.New("Tag not found")
+	err := errors.New("not found")
 	return "?", err
 }
 
@@ -159,12 +164,11 @@ func getTagsFromList(tags []string, phrases []string) (string, error) {
 	for _, phrase := range phrases {
 		for index := range tags {
 			if strings.Contains(tags[index], phrase) {
-				// Phrase matched the value of the tag
 				return strings.TrimSpace(strings.Split(tags[index], ":")[1]), nil
 			}
 		}
 	}
-	err := errors.New("Tag not found")
+	err := errors.New("not found")
 	return "?", err
 }
 
@@ -179,202 +183,144 @@ func containsTag(tags []string, phrase string) bool {
 }
 
 func test(link string) {
-	fmt.Println(link)
-	html := getHTMLDocument(link)
-	fmt.Println(getTitle(html))
+	testInfo := parse4KUHD(link)
 
-	// Test tags
-	printSlice(getTags(html, "p"))
+	fmt.Println("Link:", testInfo.url)
+	fmt.Println("Title:", testInfo.title)
+	fmt.Println("Real 4K:", testInfo.real4K)
+	fmt.Println("Director:", testInfo.director)
+	fmt.Println("Production Studio:", testInfo.studio)
+	fmt.Println("Runtime:", testInfo.runtime)
+	fmt.Println("Screen:", testInfo.screen)
+	fmt.Println("Country:", testInfo.country)
+	fmt.Println("Year:", testInfo.year)
+	fmt.Println("Actors:", testInfo.actors)
+	fmt.Println("HDR:", testInfo.hdr)
+	fmt.Println("Video Code:", testInfo.codec)
+	fmt.Println("Audio Format:", testInfo.audioFormat)
+	fmt.Println("Picture Quality:", testInfo.pq)
+}
+
+func parse4KUHD(link string) Movie {
+	// Create a Movie variable to store the parsed data
+	var info Movie
+
+	// Load the Go Query HTML Document
+	html := getHTMLDocument(link)
+
+	// Grab all the values of <p></p> tags
 	pTags := getTags(html, "p")
 
-	// Real 4K
-	real4K, err := getTagWithPhrase(pTags, "Real 4K:")
+	// Title
+	info.title = getTitle(html)
+
+	// URL
+	info.url = link
+
+	// 4K
+	phrase = "Real 4K:"
+	info.real4K, err = getTagWithPhrase(pTags, phrase)
 	if err != nil {
-		fmt.Printf("Couldn't find 'Real 4K:': %s", err)
+		fmt.Printf("[INFO] '%s' %s\n", phrase, err)
 	}
 
 	// High Dynamic Range
-	hdr, err := getTagWithPhrase(pTags, "High Dynamic Range:")
+	phrase = "High Dynamic Range:"
+	info.hdr, err = getTagWithPhrase(pTags, phrase)
 	if err != nil {
-		fmt.Printf("Couldn't find 'High Dynamic Range:': %s", err)
+
+		fmt.Printf("[INFO] '%s' %s\n", phrase, err)
 	}
 
 	// Director
-	director, err := getTagWithPhrase(pTags, "Regie:")
+	phrase = "Regie:"
+	info.director, err = getTagWithPhrase(pTags, phrase)
 	if err != nil {
-		fmt.Printf("Couldn't find 'Regie:': %s", err)
-	}
-
-	// Studio
-	studio, err := getTagWithPhrase(pTags, "Anbieter:")
-	if err != nil {
-		fmt.Printf("Couldn't find 'Anbieter:': %s", err)
+		fmt.Printf("[INFO] '%s' %s\n", phrase, err)
 	}
 
 	// Runtime
-	runtime, err := getTagWithPhrase(pTags, "Laufzeit:")
+	phrase = "Laufzeit:"
+	info.runtime, err = getTagWithPhrase(pTags, phrase)
 	if err != nil {
-		fmt.Printf("Couldn't find 'Laufzeit:': %s", err)
+		fmt.Printf("[INFO] '%s' %s\n", phrase, err)
 	}
 
 	// Screen
-	screen, err := getScreen(pTags, "Bildformat:")
+	phrase = "Bildformat:"
+	info.screen, err = getScreen(pTags, phrase)
 	if err != nil {
-		fmt.Printf("Couldn't find 'Bildformat:': %s", err)
+		fmt.Printf("[INFO] '%s' %s\n", phrase, err)
 	}
 
 	// Country
-	country, err := getCountry(pTags, "Land/")
+	phrase = "Land/"
+	info.country, err = getCountry(pTags, phrase)
 	if err != nil {
-		fmt.Printf("Couldn't find 'Land/': %s", err)
+		fmt.Printf("[INFO] '%s' %s\n", phrase, err)
 	}
 
 	// Year
-	year, err := getYear(pTags, "/Jahr")
+	phrase = "/Jahr"
+	info.year, err = getYear(pTags, phrase)
 	if err != nil {
-		fmt.Printf("Couldn't find '/Jahr': %s", err)
+		fmt.Printf("[INFO] '%s' %s\n", phrase, err)
 	}
 
 	// Actors
-	actors, err := getTagsFromList(pTags, []string{"Darsteller:", "Sprecher:"})
+	phraseList = append(phraseList, "Darsteller:", "Sprecher:")
+	info.actors, err = getTagsFromList(pTags, phraseList)
 	if err != nil {
-		fmt.Printf("Couldn't find actors : %s", err)
+		fmt.Printf("[INFO] '%s' %s\n", phraseList, err)
 	}
+	phraseList = nil // Go to garbage collector
 
 	// Video Codec
-	codec, err := getTagsFromList(pTags, []string{"Codec UHD:", "Code UHD:", "Codec (UHD):", "Codec:"})
+	phraseList = append(phraseList, "Codec UHD:", "Codec UHD:", "Codec (UHD):", "Codec:")
+	info.codec, err = getTagsFromList(pTags, phraseList)
 	if err != nil {
-		fmt.Printf("Couldn't find codec : %s", err)
+		fmt.Printf("[INFO] '%s' %s\n", phraseList, err)
 	}
+	phraseList = nil // Go to garbage collector
 
 	// Audio
-	audio, err := getTagsFromList(pTags, []string{"Tonformate UHD:", "Tonformate BD/UHD:", "Tonformate Blu-ray/UHD:", "Tonformate (UHD):", "UHD-Fassung", "Tonformate:", "Tonformate BD:"})
+	phraseList = append(phraseList, "Tonformate UHD:", "Tonformate BD/UHD:", "Tonformate Blu-ray/UHD:", "Tonformate (UHD):", "UHD-Fassung:", "Tonformate:", "Tonformate BD:")
+	info.audioFormat, err = getTagsFromList(pTags, phraseList)
 	if err != nil {
-		fmt.Printf("Couldn't find audio : %s", err)
+		fmt.Printf("[INFO] '%s' %s\n", phraseList, err)
 	}
+	phraseList = nil // Go to garbage collector
 
 	// Picture Quality
-	pq, err := getTagsFromList(getTags(html, "p strong"), []string{"Bildqualität UHD (HDR10)", "Bildqualität UHD (DV)", "Bildqualität UHD:"})
+	phraseList = append(phraseList, "Bildqualität UHD (HDR10):", "Bildqualität UHD (DV):", "Bildqualität UHD:")
+	info.pq, err = getTagsFromList(getTags(html, "p strong"), phraseList)
 	if err != nil {
-		fmt.Printf("Couldn't find pq : %s", err)
+		fmt.Printf("[INFO] '%s' %s\n", phraseList, err)
+	}
+	phraseList = nil // Go to garbage collector
+
+	// Studio
+	phrase = "Anbieter:"
+	info.studio, err = getTagWithPhrase(pTags, phrase)
+	if err != nil {
+		fmt.Printf("[INFO] '%s' %s\n", phrase, err)
 	}
 
-	// Title
-	title := getTitle(html)
+	return info
 
-	fmt.Println("Link:", link)
-	fmt.Println("Title:", title)
-	fmt.Println("Real 4K:", real4K)
-	fmt.Println("Director:", director)
-	fmt.Println("Production Studio:", studio)
-	fmt.Println("Runtime:", runtime)
-	fmt.Println("Screen:", screen)
-	fmt.Println("Country:", country)
-	fmt.Println("Year:", year)
-	fmt.Println("Actors:", actors)
-	fmt.Println("HDR:", hdr)
-	fmt.Println("Video Code:", codec)
-	fmt.Println("Audio Format:", audio)
-	fmt.Println("Picture Quality:", pq)
 }
 
 func main() {
-	var err error
 	url := "https://blu-ray-rezensionen.net/ultra-hd-blu-ray"
 	html := getHTMLDocument(url)
-	// See the HTML code
-	//html := HtmlToStr(htmlDocument)
-
 	links := getLinksWithPhrase(html, "UHD")
-	numberLinks := len(links)
-	test("https://blu-ray-rezensionen.net/india-4k-uhd/") // test it
 
-	// Common mistake: You can't instantiate an array like that with a value calculated at runtime
-	// movies := [numberLinks]Movie{} // non-constant array bound numberLinksgo
+	// Initialize a Movie slice with the desired length
+	movies := make([]Movie, len(links))
 
-	// Initialize a slice with the desired length
-	movies := make([]Movie, numberLinks)
-
-	// Risk-free and safe loop to process each element of an array
+	// Parse all the 4k UHD reviews
 	for index, link := range links {
-		fmt.Println(link)
-		movies[index].url = link
-		html = getHTMLDocument(link)
-		pTags := getTags(html, "p")
-
-		// Title
-		movies[index].title = getTitle(html)
-
-		// 4K
-		movies[index].real4K, err = getTagWithPhrase(pTags, "Real 4K:")
-		if err != nil {
-			fmt.Println("Couldn't find")
-		}
-
-		// High Dynamic Range
-		movies[index].hdr, err = getTagWithPhrase(pTags, "High Dynamic Range:")
-		if err != nil {
-			fmt.Println("Couldn't find")
-		}
-
-		// Director
-		movies[index].director, err = getTagWithPhrase(pTags, "Regie:")
-		if err != nil {
-			fmt.Println("Couldn't find")
-		}
-
-		// Studio
-		movies[index].studio, err = getTagWithPhrase(pTags, "Anbieter:")
-		if err != nil {
-			fmt.Println("Couldn't find")
-		}
-
-		// Runtime
-		movies[index].runtime, err = getTagWithPhrase(pTags, "Laufzeit:")
-		if err != nil {
-			fmt.Println("Couldn't find")
-		}
-
-		// Screen
-		movies[index].screen, err = getScreen(pTags, "Bildformat:")
-		if err != nil {
-			fmt.Println("Couldn't find")
-		}
-
-		// Country
-		movies[index].country, err = getCountry(pTags, "Land/")
-		if err != nil {
-			fmt.Println("Couldn't find")
-		}
-		// Year
-		movies[index].year, err = getYear(pTags, "/Jahr")
-		if err != nil {
-			fmt.Println("Couldn't find")
-		}
-
-		// Actors
-		movies[index].actors, err = getTagsFromList(pTags, []string{"Darsteller:", "Sprecher:"})
-		if err != nil {
-			fmt.Println("Couldn't find")
-		}
-
-		// Video Codec
-		movies[index].codec, err = getTagsFromList(pTags, []string{"Codec UHD:", "Code UHD:", "Codec (UHD):", "Codec:"})
-		if err != nil {
-			fmt.Println("Couldn't find")
-		}
-
-		// Audio
-		movies[index].audioFormat, err = getTagsFromList(pTags, []string{"Tonformate UHD:", "Tonformate BD/UHD:", "Tonformate Blu-ray/UHD:", "Tonformate (UHD):", "UHD-Fassung", "Tonformate:", "Tonformate BD:"})
-		if err != nil {
-			fmt.Println("Couldn't find")
-		}
-
-		// Picture Quality
-		movies[index].pq, err = getTagsFromList(getTags(html, "p strong"), []string{"Bildqualität UHD (HDR10)", "Bildqualität UHD (DV)", "Bildqualität UHD:"})
-		if err != nil {
-			fmt.Println("Couldn't find")
-		}
+		movies[index] = parse4KUHD(link)
 	}
 
 	printMovieSlice(movies)
